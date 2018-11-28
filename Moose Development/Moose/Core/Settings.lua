@@ -199,7 +199,7 @@
 -- @field #SETTINGS
 SETTINGS = {
   ClassName = "SETTINGS",
-  ShowPlayerMenu = true,
+  ShowPlayerMenu = false,
 }
 
 
@@ -213,7 +213,7 @@ do -- SETTINGS
 
     if PlayerName == nil then
       local self = BASE:Inherit( self, BASE:New() ) -- #SETTINGS
-      self:SetMetric() -- Defaults
+      self:SetImperial() -- Defaults
       self:SetA2G_BR() -- Defaults
       self:SetA2A_BRAA() -- Defaults
       self:SetLL_Accuracy( 3 ) -- Defaults
