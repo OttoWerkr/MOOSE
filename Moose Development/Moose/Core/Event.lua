@@ -231,6 +231,10 @@ EVENTS = {
   NewZoneGoal =       world.event.S_EVENT_NEW_ZONE_GOAL,
   DeleteZoneGoal =    world.event.S_EVENT_DELETE_ZONE_GOAL,
   RemoveUnit =        world.event.S_EVENT_REMOVE_UNIT,
+  Kill =              world.event.S_EVENT_KILL,
+  Score =             world.event.S_EVENT_SCORE,
+  UnitLost =          world.event.S_EVENT_UNIT_LOST,
+  LandingAfterEjection = world.event.S_EVENT_LANDING_AFTER_EJECTION,  
 }
 
 --- The Event structure
@@ -481,6 +485,30 @@ local _EVENTMETA = {
      Event = "OnEventRemoveUnit",
      Text = "S_EVENT_REMOVE_UNIT" 
    },
+   [EVENTS.Kill] = {
+    Order = -1,
+    Side = "I",
+    Event = "OnEventKill",
+    Text = "S_EVENT_KILL" 
+  },
+  [EVENTS.Score] = {
+    Order = 1,
+    Side = "I",
+    Event = "OnEventScore",
+    Text = "S_EVENT_SCORE" 
+  },
+  [EVENTS.UnitLost] = {
+    Order = -1,
+    Side = "I",
+    Event = "OnEventUnitLost",
+    Text = "S_EVENT_UNIT_LOST" 
+  },
+  [EVENTS.LandingAfterEjection] = {
+    Order = 1,
+    Side = "I",
+    Event = "OnEventLandingAfterEjection",
+    Text = "S_EVENT_LANDING_AFTER_EJECTION" 
+  },
 }
 
 
@@ -1064,6 +1092,8 @@ function EVENT:onEvent( Event )
                Event.id == EVENTS.PlayerEnterUnit or 
                Event.id == EVENTS.Crash or 
                Event.id == EVENTS.Dead or 
+               Event.id == EVENTS.Kill or
+               Event.id == EVENTS.UnitLost or
                Event.id == EVENTS.RemoveUnit then
             
               local UnitName = EventClass:GetName()
@@ -1115,6 +1145,8 @@ function EVENT:onEvent( Event )
                  Event.id == EVENTS.PlayerEnterUnit or
                  Event.id == EVENTS.Crash or
                  Event.id == EVENTS.Dead or
+                 Event.id == EVENTS.Kill or
+                 Event.id == EVENTS.UnitLost or
                  Event.id == EVENTS.RemoveUnit then
 
                 -- We can get the name of the EventClass, which is now always a GROUP object.
