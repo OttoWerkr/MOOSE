@@ -79,6 +79,7 @@
 -- ## 2.2 Event Handling of DCS Events
 -- 
 -- Once the class is subscribed to the event, an **Event Handling** method on the object or class needs to be written that will be called
+-- 
 -- when the DCS event occurs. The Event Handling method receives an @{Core.Event#EVENTDATA} structure, which contains a lot of information
 -- about the event that occurred.
 -- 
@@ -1275,3 +1276,223 @@ function EVENTHANDLER:New()
   self = BASE:Inherit( self, BASE:New() ) -- #EVENTHANDLER
   return self
 end
+
+---Class USEREVENT
+-- USEREVENT allows for the creation and publication of a custom, user-defined and conditioned event within the DCS environment.
+--BASE:E("*******************************************")
+--BASE:E("*** Script: USEREVENT                   ***")
+--BASE:E("*** Version: v1.02                      ***")
+--BASE:E("*** Date: 20200222                      ***")
+--BASE:E("*** Author: A101Wayz                    ***")
+--BASE:E("*******************************************")
+--- There are only 2 USEREVENT methods that are required to Create and Publish your custom events.
+-- 
+-- USEREVENT:New(ID,Order,Side,Event,Text) is used to set up and define the parameters required for a custom event.
+--  Parameters:
+--  ID        -- The ID of this event. The ID will get added to the world.event table.
+--            -- If the ID is set to 0, the next available ID will be assigned to this event.
+--            -- Optionally, if you want to use a specific ID number, set it here and the ID number will be 
+--            -- assigned if it's available. If not available, the next available ID will be assigned.
+--  Order     -- Used to determine the priority of this event. Under normal circumstances, this should be 0.
+--  Side      -- Used to determine the UNITS (if any) involved in the event:
+--            -- 'N' means there are [N]o UNITS involved in this event.
+--            -- 'I' means there is only an [I]nitiating UNIT involved.
+--            -- 'T' means there is both an initiating AND [T]arget UNIT involved.
+--  Event     -- A descriptive text string that will generate the event name and function hook name.
+--            -- So, if the standard event 'EngineStartup' did not exist, and you wanted to create that event,
+--            -- this parameter would be set to 'EngineStartup' and the resulting function hook would be
+--            -- OnEventEngineStartup.
+-- Text       -- This will be the name of the index into the world.event table. In the example of creating the
+--            -- EngineStartup, you would set this to 'S_EVENT_ENGINE_STARTUP'... Or, simply 'ENGINE_STARTUP' and
+--            -- the 'S_EVENT_' will be added automatically.
+-- 
+-- Example of creating a new USEREVENT:
+-- local myevent = USEREVENT:New(0,0,'I','FooEvent','FOO_EVENT') -- create the event 'FooEvent' that can then be subscribed to the same as a standard event:
+-- HandleEvent(EVENTS.FooEvent,...)         --subscribe to the event
+-- function OnEventFooEvent(EventData)      --capture and process the event
+--      [process the event as needed]
+-- end --function OnEventFooEvent()
+--
+--Calling USEREVENT:New(ID) will return the event with the provided ID. So, in the 'FooEvent' example:
+--  local myevent = USEREVENT:New(world.event.S_EVENT_FOO_EVENT)  --returns the USEREVENT 'FooEvent' if the event exists, or has been previously created.
+--                OR
+--  local myevent = USEREVENT:New(EVENTS.FooEvent)                -- Otherwise, returns nil
+--
+--NOTE: Unlike USERFLAG or USERSOUND, USEREVENTs are persistant for the duration of the mission, and only needs to be created ONCE during the mission. So, 
+--  calling USEREVENT:New() a second time with all parameters present will result in an error, as the New() method will return 'nil'.  However, once the 
+--  event has been created, USEREVENT:New(ID):Publish(...) is acceptable.
+-- 
+-- USEREVENT:Publish(IniUnit,TgtUnit,Payload)  -- Publishes the USEREVENT to all subscribing event handlers
+--  Parameters:
+--  IniUnit   -- [optional] A wrapper UNIT that is the initiator of this event.
+--  TgtUnit   -- [optional] A wrapper UNIT that is the target of this event.
+--  Payload   -- [optional] A table of data that will be delivered to the Event Handling function. This data will be found in the Event Handling function 
+--            -- in a table called EventData.Payload
+--            -- Example:  You want to deliver 3 values to be used in the event handler:  FooValue1 = 27, FooValue2 = 'a string', FooValue3 = function(blah blah blah)
+--            -- you could create a table and provide the table as the parameter:
+--            -- mytable = {FooValue1 = 27, FooValue2 = 'a string', FooValue3 = function(blah blah blah)}
+--            -- USERVENT:Publish(unit1,nil, mytable)
+-- 
+--            -- or you could build the table directly in the function call:
+--            -- USERVENT:Publish(unit1,nil, {FooValue1 = 27, FooValue2 = 'a string', FooValue3 = function(blah blah blah)})
+--            --
+--            -- The results of either method would be a table in the EventData table with the elements:
+--            -- EventData.Payload.FooValue1
+--            -- EventData.Payload.FooValue2
+--            -- and
+--            -- EventData.Payload.FooValue1
+-- Once the conditions of your custom event have been met, simply call Publish(ID) and the event will be triggered.
+
+--- @type USEREVENT
+-- @field #string ClassName the classname
+-- @field #number ID the ID of the event
+-- @field #table Meta Table containing the data required for the event.
+-- @extends EVENT
+
+--- The USEREVENT class
+-- @field #USEREVENT
+USEREVENT =
+{
+  ClassName = 'USEREVENT',
+  ID = 0,
+  Meta = 
+  {
+    Order = 0,  -- priority of this event. Under normal circumstances, this should be 0.
+    Side = '',  -- 'N' if no UNITS are involved, 'I' if only an initiating UNIT is involved, or 'T' if both an initiating AND target UNIT is involved
+    Event = '', -- The name of the function hook.  i.e. for OnEventEngineStartup, use 'EngineStartup'  (MUST BE UNIQUE)
+    Text = '',  -- The 'world.event indeex  i.e. S_EVENT_ENGINE_STARTUP for the EngineStartup event (MUST BE UNIQUE)
+    ID = 0,     -- Optional.  If you want to set a particular ID for your event, set it here.  If that ID is available, it will be used. Otherwise, it will be automatically assigned a unique number.
+  },
+}
+
+--- The Events structure
+-- @type USEREVENT
+
+--- Create new event handler.
+-- @param #USEREVENT self
+-- @param #number ID The Id of the event.  For creating new events, this field should be 0.  You CAN use a number, and if that ID is available, it will be used. Otherwise, an available ID will be assigned
+-- @param #number Order The processing priority of this event
+-- @param #string Side Set this to one of 3 values: 'N' if no units are involved in this event. 'I' if just an initiating unit is involved in the event. 'T' if both an initiator AND a target unit are involved.
+-- @param #string Event The name of the event which will be used as a function hook and an index into EVENTS table. i.e. EVENTS.Birth would use 'Birth'
+-- @param #string Text The index into world.event for this event.  i.e. world.event.S_EVENT_BIRTH for the Birth event would use 'S_EVENT_BIRTH', or simply 'BIRTH' (the 'S_EVENT_' prefix will be added)
+-- @return #USEREVENT self
+function USEREVENT:New(ID,Order,Side,Event,Text)
+  local self = BASE:Inherit(self,EVENT:New())
+  local tempmeta = nil
+  if not Order or not Side or not Event or not Text then
+    if ID > 0 and _EVENTMETA[ID] then
+      self.Meta.Order = _EVENTMETA[ID].Order
+      self.Meta.Side  = _EVENTMETA[ID].Side
+      self.Meta.Event = _EVENTMETA[ID].Event
+      self.Meta.Text  = _EVENTMETA[ID].Text
+      self.Meta.ID    = ID
+      self.ID = ID
+      return self
+    else
+      return nil
+    end
+  end
+  if string.sub(Text,1,8) ~= 'S_EVENT_' then
+    Text = 'S_EVENT_'..Text
+  end
+  self.Meta.Order = Order
+  self.Meta.Side = Side
+  self.Meta.Event = Event
+  self.Meta.Text = Text
+  if ID and type(ID) == 'number' then
+    self.Meta.ID = ID
+  else
+    self.Meta.ID = 0
+  end
+  self.ID = self:_InsertEvent(self.Meta)
+  if not self.ID then
+    return nil
+  end
+  return self
+end
+
+--- Publish Event.
+-- @param #USEREVENT self
+-- @param #Wrapper.UNIT IniUnit The UNIT initiating the event.
+-- @param #Wrapper.UNIT TgtUnit The UNIT that is the target of this event.
+-- @param #table  Payload A table of user supplied data that can be accessed in the Eventhandler function as EventData.Payload
+-- @return #boolean true if event is published nil if event was unable to be published.
+function USEREVENT:Publish(IniUnit,TgtUnit,Payload)
+  if (_EVENTMETA[self.ID].Side == 'I' or _EVENTMETA[self.ID].Side == 'T') and not IniUnit then
+    self:E('The event '.._EVENTMETA[self.ID].Event..' '.._EVENTMETA[self.ID].Text..' requires an Initiating Unit.')
+    self:E('Missing parameter #1 for USEREVENT:Publish() -- missing IniUnit.')
+    return nil
+  end
+
+  if _EVENTMETA[self.ID].Side == 'T' and not TgtUnit then
+    self:E('The event '.._EVENTMETA[self.ID].Event..' '.._EVENTMETA[self.ID].Text..' requires a Target Unit.')
+    self:E('Missing parameter #2 for USEREVENT:Publish() -- missing TgtUnit.')
+    return nil
+  end
+
+  local Event = 
+  {
+    id = self.ID,
+    time = timer.getAbsTime(),
+    initiator = IniUnit and IniUnit:GetDCSObject() or nil,
+    target    = TgtUnit and TgtUnit:GetDCSObject() or nil,
+    Payload = nil,
+  }
+  if Payload then
+    if type(Payload) == 'table' then
+      Event.Payload = UTILS.DeepCopy(Payload)
+    else
+      Event.Payload = {Payload}
+    end
+  end
+  world.onEvent( Event )
+  return true
+end
+
+--- Insert a new Event into world.event and _EVENTMETA. (private method)
+-- @param #USEREVENT self
+-- @param #table eventtable Table of data used to create the event
+-- @return #number eventid The newly assigned ID for this event. nil if error.
+function USEREVENT:_InsertEvent(eventtable)
+  if EVENTS[eventtable.Event] then
+    self:E("An event with name "..eventtable.Event.." already exists. Try another name.")
+    return nil
+  end
+  if world.event[eventtable.Text] then
+    self:E("An event with index "..eventtable.Text.." already exists. Try another identifier.")
+    return nil
+  end
+--self:E({eventtable = eventtable})
+  local event = eventtable.Event
+  eventtable.Event = string.format('OnEvent%s',event)
+  local eventid = eventtable.ID
+  if eventid > 0 then
+    for key,id in pairs(world.event) do
+      if eventid == id then
+        eventid = 0
+      end
+    end
+  end
+  if eventid == 0 then
+    local neweventid = world.event.S_EVENT_MAX
+    while eventid == 0 do
+      neweventid = neweventid + 1
+      local eventfound = false
+      for key,id in pairs(world.event) do
+        if neweventid == id then
+          eventfound = true
+        end 
+      end
+      if eventfound == false then
+        eventid = neweventid
+      end
+    end
+  end
+  eventtable.ID = eventid
+  self:E({eventtable = eventtable})
+  world.event[eventtable.Text] = eventid
+  EVENTS[event] = eventid
+  _EVENTMETA[eventid] = eventtable
+  return eventid
+end
+
